@@ -1,8 +1,11 @@
 #!/bin/bash
 echo "--- Installation des outils nécessaires ---"
 
-# Installation des packages 
-pip install awscli-local boto3
-sudo apt-get update && sudo apt-get install -y zip jq
+sudo rm -f /etc/apt/sources.list.d/yarn.list
 
-echo "Environnement prêt !" 
+sudo apt-get update
+sudo apt-get install -y zip jq
+
+pip install awscli awscli-local boto3
+
+echo "Environnement prêt !"
