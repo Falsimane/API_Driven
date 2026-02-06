@@ -1,18 +1,11 @@
 #!/bin/bash
-echo "--- 🛠️ Installation de l'environnement ---"
+echo "--- Installation des outils nécessaires ---"
 
-# Mise à jour et installation de jq (nécessaire pour le 'make test')
-sudo apt-get update && sudo apt-get install -y jq zip
+sudo rm -f /etc/apt/sources.list.d/yarn.list
 
-# Création dossier virtuel
-sudo mkdir -p rep_localstack
-# Changement de propriétaire pour éviter les soucis de droits avec pip
-sudo chown -R $(whoami) rep_localstack
+sudo apt-get update
+sudo apt-get install -y zip jq
 
-python3 -m venv ./rep_localstack
+pip install awscli awscli-local boto3
 
-# Installation des libs python dans le venv
-./rep_localstack/bin/pip install --upgrade pip
-./rep_localstack/bin/pip install awscli awscli-local boto3
-
-echo "✅ Environnement prêt dans ./rep_localstack"
+echo "Environnement prêt !"
