@@ -27,7 +27,7 @@ TAG_OK = $(GREEN)✅ OK$(RESET)
 TAG_WARN = $(YELLOW)⚠️  WARN$(RESET)
 TAG_STEP = $(CYAN)➜ STEP$(RESET)
 
-.PHONY: install start deploy stop clean all
+.PHONY: install start wait_port deploy stop clean all
 
 # --- CIBLES ---
 
@@ -73,6 +73,13 @@ deploy:
 	$(ACTIVATE) && ./setup_env.sh
 	@echo -e "$(TAG_OK) Déploiement terminé"
 
+wait_port:
+	@echo -e "$(LINE)"
+	@echo -e "$(BOLD)⏳ Action requise avant déploiement$(RESET)"
+	@echo -e "$(LINE)"
+	@echo -e "Veuillez rendre le port $(CYAN)4566$(RESET) public dans l'onglet $(CYAN)[PORTS]$(RESET)."
+	@read -p "Appuyez sur Entrée pour continuer le déploiement..." _
+
 stop:
 	@echo -e "$(LINE)"
 	@echo -e "$(BOLD)🛑 Arrêt des services$(RESET)"
@@ -89,4 +96,4 @@ clean:
 	rm -f function.zip lambda_function.py
 	@echo -e "$(TAG_OK) Nettoyage effectué"
 
-all: install start deploy 
+all: install start wait_port deploy 
