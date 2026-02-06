@@ -2,24 +2,28 @@ import boto3
 import json 
 import os 
 
-ENDPOINT_URL = os.environ.get("ENDPOINT_URL", "https://literate-space-guide-pq46pgj677937wp7-4566.app.github.dev/")
+# On retire l'URL par défaut pour forcer l'usage du Makefile (Clean Code)
+ENDPOINT_URL = os.environ.get("ENDPOINT_URL")
 
 def lambda_handler(event, context): 
+    # Sécurité si l'URL manque
+    if not ENDPOINT_URL:
+        return {"statusCode": 500, "body": json.dumps("Erreur config: ENDPOINT_URL manquant")}
+
     print(f"Connexion à l'endpoint : {ENDPOINT_URL}")
 
-    # Configuration du client 
     ec2 = boto3.client("ec2", endpoint_url=ENDPOINT_URL, region_name="us-east-1")
 
-    # Analyse des paramètres
-    params = event.get("queryStringParameters" or {})
+    # CORRECTION IMPORTANTE ICI : Le 'or {}' doit être dehors !
+    params = event.get("queryStringParameters") or {}
     
     action = params.get("action")
     instance_id = params.get("instance_id")
 
     if not action or not instance_id:
-        return{
+        return {
             "statusCode": 400,
-            "body": json.dumps("Erreur: Paramètres \"action\" et \"instance_id\" requis.")
+            "body": json.dumps("Erreur: Paramètres 'action' et 'instance_id' requis.")
         }
 
     try:
@@ -32,20 +36,18 @@ def lambda_handler(event, context):
         else:
             return {
                 "statusCode": 400,
-                "body": json.dumps("Action invalide (start/stop) uniquement.")
+                "body": json.dumps("Action invalide (start/stop uniquement).")
             }
+        
         return {
             "statusCode": 200,
             "body": json.dumps({
-                "message":msg,
+                "message": msg,
                 "endpoint": ENDPOINT_URL
             })
         }
     except Exception as e:
-        return{
+        return {
             "statusCode": 500,
             "body": json.dumps(f"Erreur AWS: {str(e)}")
         }
-            
-
-          
