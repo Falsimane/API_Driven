@@ -1,52 +1,28 @@
 import boto3
-import json 
-import os 
+import json
+import os
 
-# On retire l'URL par défaut pour forcer l'usage du Makefile (Clean Code)
-ENDPOINT_URL = os.environ.get("ENDPOINT_URL")
-
-def lambda_handler(event, context): 
-    # Sécurité si l'URL manque
-    if not ENDPOINT_URL:
-        return {"statusCode": 500, "body": json.dumps("Erreur config: ENDPOINT_URL manquant")}
-
-    print(f"Connexion à l'endpoint : {ENDPOINT_URL}")
-
-    ec2 = boto3.client("ec2", endpoint_url=ENDPOINT_URL, region_name="us-east-1")
-
-    # CORRECTION IMPORTANTE ICI : Le 'or {}' doit être dehors !
-    params = event.get("queryStringParameters") or {}
+def lambda_handler(event, context):
+    ls_host = os.environ.get('LOCALSTACK_HOSTNAME', 'localhost')
+    ec2 = boto3.client('ec2', endpoint_url=f"http://{ls_host}:4566")
+    target = os.environ['INSTANCE_ID']
+    path = event.get('resource', '')
     
-    action = params.get("action")
-    instance_id = params.get("instance_id")
-
-    if not action or not instance_id:
-        return {
-            "statusCode": 400,
-            "body": json.dumps("Erreur: Paramètres 'action' et 'instance_id' requis.")
-        }
-
+    msg = "Statut consulté."
     try:
-        if action == "start":
-            ec2.start_instances(InstanceIds=[instance_id])
-            msg = f"Instance {instance_id} démarrée."
-        elif action == "stop":
-            ec2.stop_instances(InstanceIds=[instance_id])
-            msg = f"Instance {instance_id} arrêtée."
-        else:
-            return {
-                "statusCode": 400,
-                "body": json.dumps("Action invalide (start/stop uniquement).")
-            }
+        if '/start' in path:
+            ec2.start_instances(InstanceIds=[target])
+            msg = "🚀 Démarrage demandé."
+        elif '/stop' in path:
+            ec2.stop_instances(InstanceIds=[target])
+            msg = "🛑 Arrêt demandé."
+        
+        state = ec2.describe_instances(InstanceIds=[target])['Reservations'][0]['Instances'][0]['State']['Name']
         
         return {
             "statusCode": 200,
-            "body": json.dumps({
-                "message": msg,
-                "endpoint": ENDPOINT_URL
-            })
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"id": target, "state": state, "info": msg})
         }
     except Exception as e:
-        return {
-            "statusCode": 500,
-            "body": json.dumps(f"Erreur AWS: {str(e)}")
+        return {"statusCode": 500, "body": str(e)}

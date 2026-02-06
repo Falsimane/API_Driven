@@ -1,53 +1,66 @@
-# --- CONFIGURATION ---
-export ENDPOINT_URL := https://literate-space-guide-pq46pgj677937wp7-4566.app.github.dev
-export AWS_ACCESS_KEY_ID := test
-export AWS_SECRET_ACCESS_KEY := test
-export AWS_DEFAULT_REGION := us-east-1
-export AWS_REGION := us-east-1
+# Makefile pour API-Driven Infrastructure (Mode Interactif & Clean)
+# Version: 2.2 | Auto-Stop on Clean
 
-AWS_CMD := aws --endpoint-url=$(ENDPOINT_URL)
+# --- VARIABLES ---
+SHELL := /bin/bash
+PROJECT_NAME = infra-localstack
+VENV = .venv_aws
+BIN = $(VENV)/bin
+ACTIVATE = source $(BIN)/activate
 
-.PHONY: all install deploy-lambda create-ec2 create-api 
+# --- ESTHÉTIQUE ---
+BOLD = \033[1m
+GREEN = \033[32m
+CYAN = \033[36m
+AMBER = \033[33m
+RED = \033[31m
+RESET = \033[0m
 
-all: install deploy-lambda create-ec2 create-api 
+.PHONY: all install start pause deploy stop clean
 
-install: 
-	@echo "--- Lancement du script d'installation ---"
-	chmod +x setup_env.sh
-	./setup_env.sh
+all: install start pause deploy
 
-deploy-lambda:
-	@echo "--- Déploiement Lambda ---"
-	zip function.zip lambda_function.py
-	$(AWS_CMD) lambda create-function --function-name EC2Manager \
-		--zip-file fileb://function.zip --handler lambda_function.lambda_handler \
-		--runtime python3.9 --role arn:aws:iam::000000000000:role/Role \
-		--environment Variables={ENDPOINT_URL=$(ENDPOINT_URL)} || \
-	$(AWS_CMD) lambda update-function-code --function-name EC2Manager --zip-file fileb://function.zip
+install:
+	@echo -e "$(CYAN)📦 [1/4] Installation de l'environnement...$(RESET)"
+	@test -d $(VENV) || python3 -m venv $(VENV)
+	@$(ACTIVATE) && pip install --quiet --upgrade pip && \
+		pip install --quiet localstack awscli-local awscli
+	@echo -e "$(GREEN)✅ Dépendances installées.$(RESET)"
 
-create-ec2: 
-	@echo "--- 🖥️ Lancement d'une instance EC2 de test ---"
-	$(eval INSTANCE_ID := $(shell $(AWS_CMD) ec2 run-instances --image-id ami-df5de72ade3b --count 1 --instance-type t2.micro --query 'Instances[0].InstanceId' --output text))
-	@echo $(INSTANCE_ID) > instance_id.txt
-	@echo "Instance créée : $(INSTANCE_ID)"
+start:
+	@echo -e "$(CYAN)⚡ [2/4] Démarrage de LocalStack...$(RESET)"
+	@$(ACTIVATE) && export S3_SKIP_SIGNATURE_VALIDATION=0 && localstack start -d
+	@echo -e "   ⏳ Attente de disponibilité des services (Health Check)..."
+	@sleep 10
+	@$(ACTIVATE) && localstack wait -t 30 > /dev/null && \
+		echo -e "$(GREEN)✅ LocalStack est en ligne.$(RESET)"
 
-create-api:
-	@echo "--- 🌐 Configuration de l'API Gateway ---"
-	$(eval API_ID := $(shell $(AWS_CMD) apigateway create-rest-api --name 'EC2ControlAPI' --query 'id' --output text))
-	$(eval PARENT_ID := $(shell $(AWS_CMD) apigateway get-resources --rest-api-id $(API_ID) --query 'items[0].id' --output text))
-	$(eval RES_ID := $(shell $(AWS_CMD) apigateway create-resource --rest-api-id $(API_ID) --parent-id $(PARENT_ID) --path-part monitor --query 'id' --output text))
-	$(AWS_CMD) apigateway put-method --rest-api-id $(API_ID) --resource-id $(RES_ID) --http-method GET --authorization-type "NONE"
-	$(AWS_CMD) apigateway put-integration --rest-api-id $(API_ID) --resource-id $(RES_ID) --http-method GET \
-		--type AWS_PROXY --integration-http-method POST \
-		--uri arn:aws:apigateway:$(AWS_REGION):lambda:path/2015-03-31/functions/arn:aws:lambda:$(AWS_REGION):000000000000:function:EC2Manager/invocations
-	$(AWS_CMD) apigateway create-deployment --rest-api-id $(API_ID) --stage-name prod
+pause:
 	@echo ""
-	@echo "==========================================================="
-	@echo "🚀 TEST DE L'API ICI :"
-	@echo "$(ENDPOINT_URL)/restapis/$(API_ID)/prod/_user_request_/monitor?action=stop&instance_id=$$(cat instance_id.txt)"
-	@echo "==========================================================="
+	@echo -e "$(RED)============================================================$(RESET)"
+	@echo -e "$(BOLD)🛑 STOP ! ACTION REQUISE MAINTENANT 🛑$(RESET)"
+	@echo -e "$(RED)============================================================$(RESET)"
+	@echo -e "1. Allez dans l'onglet $(BOLD)'PORTS'$(RESET) du Codespace."
+	@echo -e "2. Cherchez le port $(BOLD)4566$(RESET)."
+	@echo -e "3. Changez la visibilité de 'Private' à $(GREEN)$(BOLD)'Public'$(RESET)."
+	@echo ""
+	@echo -ne "$(AMBER)👉 Une fois que c'est fait, appuyez sur [ENTRÉE] pour continuer...$(RESET)"
+	@read -p "" dummy
+	@echo -e "$(GREEN)✅ Reprise du déploiement...$(RESET)"
 
-clean:
-	@echo "--- 🧹 Nettoyage ---"
-	rm -f function.zip instance_id.txt
-	$(AWS_CMD) lambda delete-function --function-name EC2Manager || true
+deploy:
+	@echo -e "$(CYAN)🏗️  [3/4] Déploiement de l'infrastructure...$(RESET)"
+	@chmod +x setup_env.sh
+	@$(ACTIVATE) && ./setup_env.sh
+
+stop:
+	@echo -e "$(AMBER)🛑 Arrêt des services...$(RESET)"
+	@# Le '|| true' permet de ne pas planter si le venv n'existe plus
+	@test -f $(BIN)/activate && ($(ACTIVATE) && localstack stop) || echo "   (LocalStack déjà arrêté ou venv introuvable)"
+	@echo -e "$(GREEN)✅ Services arrêtés.$(RESET)"
+
+# ICI : On appelle 'stop' avant de faire le ménage
+clean: stop
+	@echo -e "$(AMBER)🧹 Suppression des fichiers...$(RESET)"
+	rm -rf $(VENV) function.zip
+	@echo -e "$(GREEN)✨ Environnement entièrement nettoyé.$(RESET)"

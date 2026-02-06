@@ -1,4 +1,5 @@
-./rep_localstack
+rep_localstack/
 function.zip
 url_token
 instance_id.txt 
+.venv_aws/
