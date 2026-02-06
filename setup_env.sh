@@ -1,17 +1,18 @@
 #!/bin/bash
-echo "--- 🛠️ Installation des outils ---"
+echo "--- 🛠️ Installation de l'environnement ---"
 
-# 1. Nettoyage et Installation
-sudo rm -f /etc/apt/sources.list.d/yarn.list
-sudo apt-get update
-sudo apt-get install -y zip jq
-pip install awscli awscli-local boto3
+# Mise à jour et installation de jq (nécessaire pour le 'make test')
+sudo apt-get update && sudo apt-get install -y jq zip
 
-# 2. Configuration PERSISTANTE des credentials
-echo "--- 🔑 Configuration des identifiants AWS (Fictifs) ---"
-aws configure set aws_access_key_id test
-aws configure set aws_secret_access_key test
-aws configure set region us-east-1
-aws configure set output json
+# Création dossier virtuel
+sudo mkdir -p rep_localstack
+# Changement de propriétaire pour éviter les soucis de droits avec pip
+sudo chown -R $(whoami) rep_localstack
 
-echo "✅ Environnement prêt et configuré !"
+python3 -m venv ./rep_localstack
+
+# Installation des libs python dans le venv
+./rep_localstack/bin/pip install --upgrade pip
+./rep_localstack/bin/pip install awscli awscli-local boto3
+
+echo "✅ Environnement prêt dans ./rep_localstack"

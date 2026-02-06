@@ -2,7 +2,7 @@ import boto3
 import json 
 import os 
 
-# On retire l'URL par défaut pour forcer l'usage du Makefile (Clean Code)
+# On récupère l'URL injectée par le Makefile
 ENDPOINT_URL = os.environ.get("ENDPOINT_URL")
 
 def lambda_handler(event, context): 
@@ -12,9 +12,11 @@ def lambda_handler(event, context):
 
     print(f"Connexion à l'endpoint : {ENDPOINT_URL}")
 
-    ec2 = boto3.client("ec2", endpoint_url=ENDPOINT_URL, region_name="us-east-1")
+    # Connexion à l'EC2 via l'URL publique
+    ec2 = boto3.client("ec2", endpoint_url=ENDPOINT_URL, region_name="us-east-1", verify=False)
 
-    # CORRECTION IMPORTANTE ICI : Le 'or {}' doit être dehors !
+    
+    # Gestion des paramètres
     params = event.get("queryStringParameters") or {}
     
     action = params.get("action")

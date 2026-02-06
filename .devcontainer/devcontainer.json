@@ -1,0 +1,21 @@
+{
+  "name": "AWS LocalStack Env",
+  "image": "mcr.microsoft.com/devcontainers/python:3",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "forwardPorts": [4566],
+  "portsAttributes": {
+    "4566": {
+      "label": "LocalStack Gateway",
+      "visibility": "public"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python"
+      ]
+    }
+  }
+}
